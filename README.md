@@ -1,5 +1,5 @@
 # 🔥 FRIDAY AUTH 🔥
-## By BIG DADDY ALI
+## By SUPREME DADDY ALI
 
 **F**emale **R**eplacement **I**ntelligent **D**igital **A**ssistant **Y**outh
 
