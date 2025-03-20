@@ -155,50 +155,60 @@ export default function HeroGeometric({
   // Handle start recording
   const startRecording = async () => {
     try {
-      // Get or check permission first
-      let stream = audioStream
-      if (!stream) {
-        stream = await requestMicrophonePermission()
-        if (!stream) return
+      // If already recording, stop first
+      if (isRecording && mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
       }
-
+      
       // Reset state and clear previous recording
-      audioChunksRef.current = []
-      setTranscribedText("")
-
+      audioChunksRef.current = [];
+      setTranscribedText("");
+      
+      // Get a fresh stream each time to avoid issues with reusing streams
+      if (audioStream) {
+        // Stop all previous tracks
+        audioStream.getTracks().forEach(track => track.stop());
+      }
+      
+      // Get a fresh audio stream
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setAudioStream(stream);
+      setHasPermission(true);
+      
       // Set up new MediaRecorder with the stream
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
-      mediaRecorderRef.current = mediaRecorder
-
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      
       // Configure event handlers
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data)
+          audioChunksRef.current.push(event.data);
         }
-      }
-
+      };
+      
       mediaRecorder.onstop = async () => {
         try {
           if (audioChunksRef.current.length === 0) {
-            setLoading(false)
-            return
+            setLoading(false);
+            return;
           }
           
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" })
-          await processAudio(audioBlob)
+          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          await processAudio(audioBlob);
         } catch (error) {
-          console.error("Error in onstop handler:", error)
-          setLoading(false)
-          setTranscribedText("An error occurred while processing your audio.")
+          console.error("Error in onstop handler:", error);
+          setLoading(false);
+          setTranscribedText("An error occurred while processing your audio.");
         }
-      }
-
+      };
+      
       // Start recording immediately - request data every 1 second
-      mediaRecorder.start(1000)
-      setIsRecording(true)
+      mediaRecorder.start(1000);
+      setIsRecording(true);
     } catch (error) {
-      console.error("Error starting recording:", error)
-      setIsRecording(false)
+      console.error("Error starting recording:", error);
+      setIsRecording(false);
     }
   }
 
@@ -206,13 +216,16 @@ export default function HeroGeometric({
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       try {
-        mediaRecorderRef.current.stop()
-        setIsRecording(false)
-        setLoading(true)
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+        setLoading(true);
+        
+        // Don't stop tracks here - we'll reuse the audio stream reference
+        // but get a fresh stream on next recording
       } catch (error) {
-        console.error("Error stopping recording:", error)
-        setIsRecording(false)
-        setLoading(false)
+        console.error("Error stopping recording:", error);
+        setIsRecording(false);
+        setLoading(false);
       }
     }
   }
