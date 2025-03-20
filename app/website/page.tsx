@@ -9,6 +9,8 @@ import { Mic, Download, MicOff, Loader2 } from "lucide-react"
 import { WavyBackground } from "@/components/ui/wavy-background"
 import { useState, useRef, useEffect } from "react"
 import { transcribeAudio } from "../actions"
+import Link from "next/link"
+import { FooterYear } from "../components/FooterWithClientComponents"
 
 const pacifico = Pacifico({
   subsets: ["latin"],
@@ -295,12 +297,16 @@ export default function HeroGeometric({
           <div className="relative backdrop-blur-md border-b border-white/10 bg-black/10">
             <div className="container mx-auto px-4 md:px-6 py-3 flex justify-end items-center">
               <nav className="flex items-center gap-2 md:gap-4">
-                <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full px-3 py-1.5 text-sm">
-                  Sign Up
-                </Button>
-                <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full px-3 py-1.5 text-sm">
-                  Login
-                </Button>
+                <Link href="/signup">
+                  <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full px-3 py-1.5 text-sm">
+                    Sign Up
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full px-3 py-1.5 text-sm">
+                    Login
+                  </Button>
+                </Link>
                 <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full px-3 py-1.5 text-sm">
                   Pricing
                 </Button>
@@ -406,35 +412,35 @@ export default function HeroGeometric({
           waveOpacity={0.6}
         >
           <div className="max-w-4xl mx-auto px-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-6 md:gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
               className={cn(
                 "transform transition-all duration-500",
                 (transcribedText || loading) && "md:translate-x-[-50px]"
               )}
-            >
-              <Button
-                className="group relative overflow-hidden rounded-full px-8 py-7 text-lg font-medium transition-all duration-300 ease-out hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-[#030303]"
-                style={{
+          >
+            <Button
+              className="group relative overflow-hidden rounded-full px-8 py-7 text-lg font-medium transition-all duration-300 ease-out hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-[#030303]"
+              style={{
                   background: "linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%)",
                   boxShadow: "0 10px 30px -10px rgba(15, 23, 42, 0.6)",
-                }}
+              }}
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={loading}
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2">
                   {loading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : isRecording ? (
                     <MicOff className="h-5 w-5 text-red-400" />
                   ) : (
-                    <Mic className="h-5 w-5" />
+                <Mic className="h-5 w-5" />
                   )}
                   {loading ? "Processing..." : isRecording ? "Stop Recording" : "Talk with Friday"}
-                </span>
-                <span className="absolute inset-0 overflow-hidden rounded-full">
+              </span>
+              <span className="absolute inset-0 overflow-hidden rounded-full">
                   <span className="absolute inset-0 rounded-full bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 opacity-0 transition-opacity duration-500 group-hover:opacity-100"></span>
                   <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent_70%)]"></span>
                 </span>
@@ -737,9 +743,7 @@ export default function HeroGeometric({
             <div className="mb-2 md:mb-0">
               Built with <span className="text-pink-500 mx-1">♥</span> & few shots of caffeine
             </div>
-            <div>
-              © {new Date().getFullYear()} Transpify. All rights reserved.
-            </div>
+            <FooterYear />
           </div>
         </div>
       </footer>
