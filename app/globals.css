@@ -120,3 +120,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes gradient-rotation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-slow {
+  animation: gradient-rotation 6s ease infinite;
+  background-size: 200% 200%;
+}
