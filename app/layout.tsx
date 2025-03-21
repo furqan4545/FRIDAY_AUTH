@@ -17,9 +17,8 @@ export const metadata: Metadata = {
   title: "Friday - AI Voice-to-Text Transcription",
   description: "Command Friday to write effortlessly with just your voice. The fastest AI voice-to-text app for Mac.",
   icons: [
-    { rel: 'icon', url: '/favicon.ico', sizes: 'any' },
+    { rel: 'icon', url: '/favicon.ico' },
     { rel: 'icon', url: '/icon.svg', type: 'image/svg+xml' },
-    { rel: 'icon', url: '/Friday_Icons/icon1.png', type: 'image/png' },
     { rel: 'apple-touch-icon', url: '/Friday_Icons/icon1.png' }
   ],
   openGraph: {
@@ -45,9 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/Friday_Icons/icon1.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/Friday_Icons/icon1.png" />
+        {/* Favicon handled through metadata */}
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen h-full`}
