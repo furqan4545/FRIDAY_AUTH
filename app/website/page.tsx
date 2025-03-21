@@ -296,7 +296,17 @@ export default function HeroGeometric({
           
           {/* Glassmorphic bar */}
           <div className="relative backdrop-blur-md border-b border-white/10 bg-black/10">
-            <div className="container mx-auto px-4 md:px-6 py-3 flex justify-end items-center">
+            <div className="container mx-auto px-4 md:px-6 py-3 flex justify-between items-center">
+              <div className="flex items-center">
+                <Link href="/website" className="flex items-center">
+                  <span className={cn(
+                    "hidden md:inline text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300",
+                    pacifico.className
+                  )}>
+                    Friday
+                  </span>
+                </Link>
+              </div>
               <nav className="flex items-center gap-2 md:gap-4">
                 <Link href="/signup">
                   <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full px-3 py-1.5 text-sm">
