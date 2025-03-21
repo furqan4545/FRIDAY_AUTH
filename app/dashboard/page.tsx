@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, Copy, AlertTriangle, Home, LogOut } from "lucide-react"
+import { Check, Copy, AlertTriangle, Home, LogOut, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuth } from "@/lib/auth-context"
@@ -21,6 +21,8 @@ interface SubscriptionData {
 
 export default function Dashboard() {
   const [copied, setCopied] = useState(false)
+  const [emailCopied, setEmailCopied] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData>({
     hasPaid: false,
     secretKey: null,
@@ -30,6 +32,16 @@ export default function Dashboard() {
   const { user, signOut, isConfigured } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Simple auth loading effect - wait for 1 second to let Firebase initialize
+  useEffect(() => {
+    // Ensure we only redirect after this delay
+    const timer = setTimeout(() => {
+      setAuthLoading(false)
+    }, 500)
+    
+    return () => clearTimeout(timer)
+  }, [])
 
   // Fetch subscription data
   useEffect(() => {
@@ -82,12 +94,12 @@ export default function Dashboard() {
     }
   }, [searchParams, user])
 
-  // Redirect if not logged in
+  // Redirect if not logged in - BUT ONLY AFTER AUTH HAS INITIALIZED
   useEffect(() => {
-    if (!user && isConfigured) {
+    if (!authLoading && !user && isConfigured) {
       router.push("/signup");
     }
-  }, [user, isConfigured, router]);
+  }, [user, isConfigured, router, authLoading]);
 
   const copyToClipboard = () => {
     if (!user || !subscriptionData.secretKey) return
@@ -102,12 +114,35 @@ export default function Dashboard() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const copyEmailToClipboard = () => {
+    if (!user || !user.email) return
+    
+    navigator.clipboard.writeText(user.email)
+    setEmailCopied(true)
+
+    toast("Email Copied", {
+      description: "Email has been copied to your clipboard",
+    })
+
+    setTimeout(() => setEmailCopied(false), 2000)
+  }
+
   const handleSignOut = async () => {
     await signOut()
     toast("Signed Out", {
       description: "You have been signed out successfully",
     })
     router.push("/")
+  }
+
+  // Show loader while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+        <p className="mt-4 text-xl">Loading your dashboard...</p>
+      </div>
+    );
   }
 
   // Show Firebase configuration error
@@ -185,11 +220,24 @@ export default function Dashboard() {
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-500">Welcome</p>
               <p className="text-lg font-bold">{user.displayName || user.email}</p>
+              {user.email && (
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-500 mb-1">YOUR FRIDAY EMAIL</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 p-2 bg-gray-100 rounded text-sm overflow-x-auto">
+                      <code>{user.email}</code>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={copyEmailToClipboard} className="flex-shrink-0">
+                      {emailCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {subscriptionData.hasPaid && subscriptionData.secretKey && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-500">YOUR FRIDAY SECRET KEY</p>
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-500 mb-1">YOUR FRIDAY SECRET KEY</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 p-2 bg-gray-100 rounded text-sm overflow-x-auto">
                     {subscriptionData.secretKey}
@@ -209,10 +257,6 @@ export default function Dashboard() {
                 </p>
               </div>
             )}
-
-            <Button variant="destructive" className="w-full" onClick={handleSignOut}>
-              Sign Out
-            </Button>
           </CardContent>
         </Card>
 

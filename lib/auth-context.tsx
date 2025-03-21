@@ -5,7 +5,8 @@ import {
   signInWithPopup,
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
-  User
+  User,
+  AuthError
 } from "firebase/auth";
 import { auth, googleProvider } from "./firebase";
 
@@ -45,8 +46,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
+      // Check if error is a Firebase AuthError 
+      const authError = error as AuthError;
+      
+      // Firebase error codes for popup being closed
+      // auth/popup-closed-by-user or auth/cancelled-popup-request
+      if (authError.code === 'auth/popup-closed-by-user' || 
+          authError.code === 'auth/cancelled-popup-request') {
+        console.log('User closed the popup window, not throwing error');
+        return; // Don't rethrow the error when user just closed the popup
+      }
+      
       console.error("Error during Google sign-in:", error);
-      throw error;
+      throw error; // Rethrow other errors so they can be handled by the caller
     }
   };
 

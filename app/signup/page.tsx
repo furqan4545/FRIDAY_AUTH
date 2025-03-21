@@ -47,8 +47,12 @@ export default function Home() {
 
     try {
       await signInWithGoogle()
-      router.push("/dashboard");
+      
+      // No need to call router.push here - the useEffect will handle it
+      // when the auth state updates after successful login
     } catch (error: any) {
+      // Note: popup closed errors are now handled in auth-context.tsx
+      // and won't reach this catch block
       console.error("Failed to sign in with Google:", error)
       
       toast("Sign In Failed", {
