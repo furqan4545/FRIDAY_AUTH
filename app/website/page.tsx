@@ -110,15 +110,12 @@ function WavePattern() {
   )
 }
 
-export default function HeroGeometric({
-  badge = "Kokonut UI",
-  title1 = "Whisper Your",
-  title2 = "Words to Life",
-}: {
-  badge?: string
-  title1?: string
-  title2?: string
-}) {
+export default function WebsitePage() {
+  // Default values directly in the component
+  const badge = "Kokonut UI";
+  const title1 = "Whisper Your";
+  const title2 = "Words to Life";
+  
   // State for recording functionality
   const [isRecording, setIsRecording] = useState(false)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
