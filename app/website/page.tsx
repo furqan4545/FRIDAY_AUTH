@@ -307,9 +307,11 @@ export default function HeroGeometric({
                     Login
                   </Button>
                 </Link>
-                <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full px-3 py-1.5 text-sm">
-                  Pricing
-                </Button>
+                <Link href="/pricing">
+                  <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full px-3 py-1.5 text-sm">
+                    Pricing
+                  </Button>
+                </Link>
                 <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-full px-4 py-1.5 text-sm flex items-center gap-1.5">
                   <Download className="h-3.5 w-3.5" />
                   <span>Download</span>

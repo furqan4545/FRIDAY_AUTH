@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, Copy, AlertTriangle, Home, LogOut, Loader2 } from "lucide-react"
+import { Check, Copy, AlertTriangle, Home, LogOut, Loader2, Menu, X } from "lucide-react"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuth } from "@/lib/auth-context"
@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false)
   const [emailCopied, setEmailCopied] = useState(false)
   const [authLoading, setAuthLoading] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData>({
     hasPaid: false,
     secretKey: null,
@@ -38,10 +39,22 @@ export default function Dashboard() {
     // Ensure we only redirect after this delay
     const timer = setTimeout(() => {
       setAuthLoading(false)
-    }, 500)
+    }, 200)
     
     return () => clearTimeout(timer)
   }, [])
+
+  // Close mobile menu when window resizes to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768 && mobileMenuOpen) {
+        setMobileMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [mobileMenuOpen])
 
   // Fetch subscription data
   useEffect(() => {
@@ -135,6 +148,11 @@ export default function Dashboard() {
     router.push("/")
   }
 
+  // Toggle mobile menu
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen)
+  }
+
   // Show loader while auth is initializing
   if (authLoading) {
     return (
@@ -175,15 +193,34 @@ export default function Dashboard() {
       
       {/* Navigation bar */}
       <div className="w-full bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center relative">
           <div className="flex items-center">
             <h1 className="text-xl font-bold">Friday Dashboard</h1>
           </div>
-          <div className="flex items-center space-x-2">
+          
+          {/* Mobile menu button */}
+          <button 
+            className="md:hidden flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 focus:outline-none"
+            onClick={toggleMobileMenu}
+          >
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <Menu className="h-6 w-6" />
+            )}
+          </button>
+          
+          {/* Desktop menu */}
+          <div className="hidden md:flex items-center space-x-2">
             <Link href="/website">
               <Button variant="ghost" size="sm" className="flex items-center gap-1.5">
                 <Home className="h-4 w-4" />
                 <span>Website</span>
+              </Button>
+            </Link>
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm" className="flex items-center gap-1.5">
+                <span>Pricing</span>
               </Button>
             </Link>
             <Button 
@@ -196,6 +233,33 @@ export default function Dashboard() {
               <span>Sign Out</span>
             </Button>
           </div>
+          
+          {/* Mobile menu dropdown */}
+          {mobileMenuOpen && (
+            <div className="absolute top-full right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-lg z-50 md:hidden">
+              <Link href="/website" onClick={() => setMobileMenuOpen(false)}>
+                <div className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                  <Home className="h-4 w-4" />
+                  <span>Website</span>
+                </div>
+              </Link>
+              <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>
+                <div className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                  <span>Pricing</span>
+                </div>
+              </Link>
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
+                onClick={() => {
+                  handleSignOut();
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
       
