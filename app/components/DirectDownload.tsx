@@ -17,20 +17,11 @@ export function DirectDownload({
 }: DownloadButtonProps) {
   const [downloading, setDownloading] = useState(false)
   
-  // Using a public S3 URL that doesn't require authentication
-  const dmgUrl = "https://friday-app-downloads.s3.amazonaws.com/Friday-1.0.0.dmg"
-  
   const handleDownload = () => {
     setDownloading(true)
     
-    // Create an anchor element and trigger download
-    const link = document.createElement('a')
-    link.href = dmgUrl
-    link.setAttribute('download', 'Friday-1.0.0.dmg')
-    link.setAttribute('target', '_blank')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Redirect to the direct download endpoint
+    window.location.href = "/api/download";
     
     // Reset downloading state after a short delay
     setTimeout(() => {

@@ -313,10 +313,10 @@ export default function HeroGeometric({
                     Pricing
                   </Button>
                 </Link>
-                <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-full px-4 py-1.5 text-sm flex items-center gap-1.5">
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Download</span>
-                </Button>
+                <DirectDownload 
+                  label="Download"
+                  className="rounded-full px-4 py-1.5 text-sm"
+                />
               </nav>
             </div>
           </div>
