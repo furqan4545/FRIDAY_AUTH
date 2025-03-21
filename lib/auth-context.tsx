@@ -2,16 +2,15 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { 
-  signInWithPopup, 
+  signInWithPopup,
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
-  User 
+  User
 } from "firebase/auth";
 import { auth, googleProvider } from "./firebase";
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   isConfigured: boolean;
@@ -21,35 +20,33 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const isConfigured = auth !== null;
 
-  // Listen for auth state changes
+  // Set up auth state listener - this is the primary way we detect login state
   useEffect(() => {
-    if (!auth) {
-      setLoading(false);
+    if (!auth || typeof window === 'undefined') {
       return;
     }
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
+    
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Sign in with Google
+  // Sign in with Google via popup
   const signInWithGoogle = async () => {
     if (!auth || !googleProvider) {
       console.error("Firebase auth is not initialized");
-      return;
+      throw new Error("Firebase auth is not initialized");
     }
 
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error("Error signing in with Google", error);
+      console.error("Error during Google sign-in:", error);
+      throw error;
     }
   };
 
@@ -63,12 +60,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await firebaseSignOut(auth);
     } catch (error) {
-      console.error("Error signing out", error);
+      console.error("Error signing out:", error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, isConfigured }}>
+    <AuthContext.Provider value={{ user, signInWithGoogle, signOut, isConfigured }}>
       {children}
     </AuthContext.Provider>
   );

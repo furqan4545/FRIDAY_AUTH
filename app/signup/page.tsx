@@ -7,20 +7,22 @@ import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 export default function Home() {
   const router = useRouter()
-  const { user, signInWithGoogle, loading, isConfigured } = useAuth()
+  const { user, signInWithGoogle, isConfigured } = useAuth()
   const [snowflakes, setSnowflakes] = useState<
     Array<{ id: number; left: number; size: number; opacity: number; animationDuration: number }>
   >([])
 
-  // Redirect if already logged in
+  // Handle redirect if user is logged in
   useEffect(() => {
     if (user) {
-      router.push("/dashboard")
+      router.push("/dashboard");
     }
-  }, [user, router])
+  }, [user, router]);
 
   useEffect(() => {
     // Create snowflakes
@@ -45,14 +47,13 @@ export default function Home() {
 
     try {
       await signInWithGoogle()
-      toast("Sign In Successful", {
-        description: "You are now signed in with Google",
-      })
-    } catch (error) {
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("Failed to sign in with Google:", error)
+      
       toast("Sign In Failed", {
-        description: "There was an error signing in with Google",
+        description: "There was an error signing in. Please try again.",
       })
-      console.error(error)
     }
   }
 
@@ -63,6 +64,20 @@ export default function Home() {
         <Toaster />
         {/* Gradient Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500" />
+
+        {/* Back button - positioned at the top left */}
+        <div className="absolute top-4 left-4 z-20">
+          <Link href="/website">
+            <Button 
+              variant="ghost" 
+              className="text-white hover:bg-white/10 transition-all flex items-center gap-2 group" 
+              size="sm"
+            >
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+              Back to Home
+            </Button>
+          </Link>
+        </div>
 
         {/* Content */}
         <Card className="relative z-10 w-full max-w-md shadow-lg bg-white/10 backdrop-blur-md p-8">
@@ -83,9 +98,9 @@ export default function Home() {
     )
   }
 
-  // Show loading state
-  if (loading) {
-    return <div className="h-screen flex items-center justify-center">Loading...</div>
+  // If user is present, don't render the form (will redirect)
+  if (user) {
+    return null;
   }
 
   return (
@@ -93,6 +108,20 @@ export default function Home() {
       <Toaster />
       {/* Gradient Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500" />
+
+      {/* Back button - positioned at the top left */}
+      <div className="absolute top-4 left-4 z-20">
+        <Link href="/website">
+          <Button 
+            variant="ghost" 
+            className="text-white hover:bg-white/10 transition-all flex items-center gap-2 group" 
+            size="sm"
+          >
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+            Back to Home
+          </Button>
+        </Link>
+      </div>
 
       {/* Snowflakes */}
       {snowflakes.map((flake) => (
@@ -113,14 +142,17 @@ export default function Home() {
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center justify-center p-8 bg-white/10 backdrop-blur-md rounded-xl shadow-2xl">
         <h1 className="mb-8 text-4xl font-bold text-white">Welcome</h1>
-        <Button size="lg" className="bg-white text-purple-700 hover:bg-white/90" onClick={handleSignup}>
+        <Button 
+          size="lg" 
+          className="bg-white text-purple-700 hover:bg-white/90" 
+          onClick={handleSignup}
+        >
           Sign in with Google
         </Button>
       </div>
 
       {/* Animation keyframes */}
-      <style jsx global>{`
-        @keyframes fall {
+      <style jsx global>{`        @keyframes fall {
           0% {
             transform: translateY(-10vh) rotate(0deg);
           }
@@ -132,4 +164,5 @@ export default function Home() {
     </main>
   )
 }
+
 

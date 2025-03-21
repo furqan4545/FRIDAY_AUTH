@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, Copy, AlertTriangle } from "lucide-react"
+import { Check, Copy, AlertTriangle, Home, LogOut } from "lucide-react"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuth } from "@/lib/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
 import { PricingPlans } from "@/components/pricing-plans"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Link from "next/link"
 
 interface SubscriptionData {
   hasPaid: boolean;
@@ -20,7 +21,6 @@ interface SubscriptionData {
 
 export default function Dashboard() {
   const [copied, setCopied] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData>({
     hasPaid: false,
     secretKey: null,
@@ -49,8 +49,6 @@ export default function Dashboard() {
         toast("Error", {
           description: "Failed to load your subscription data. Please try again.",
         });
-      } finally {
-        setLoading(false);
       }
     }
     
@@ -86,10 +84,10 @@ export default function Dashboard() {
 
   // Redirect if not logged in
   useEffect(() => {
-    if (isConfigured && !user) {
-      router.push("/")
+    if (!user && isConfigured) {
+      router.push("/signup");
     }
-  }, [user, router, isConfigured])
+  }, [user, isConfigured, router]);
 
   const copyToClipboard = () => {
     if (!user || !subscriptionData.secretKey) return
@@ -131,19 +129,41 @@ export default function Dashboard() {
     )
   }
 
-  // Show loading or not authenticated message
+  // If no user, show simple redirect message (this is just during page transition)
   if (!user) {
-    return <div className="h-screen flex items-center justify-center">Redirecting...</div>
+    return null;
   }
   
-  // Show loading state while fetching subscription data
-  if (loading) {
-    return <div className="h-screen flex items-center justify-center">Loading your data...</div>
-  }
-
   return (
     <main className="flex min-h-screen flex-col items-center p-4 bg-gradient-to-br from-gray-50 to-gray-100">
       <Toaster />
+      
+      {/* Navigation bar */}
+      <div className="w-full bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center">
+            <h1 className="text-xl font-bold">Friday Dashboard</h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Link href="/website">
+              <Button variant="ghost" size="sm" className="flex items-center gap-1.5">
+                <Home className="h-4 w-4" />
+                <span>Website</span>
+              </Button>
+            </Link>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="flex items-center gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+      
       <div className="w-full max-w-6xl space-y-8 py-8">
         {/* Free plan banner - only show if user hasn't paid */}
         {!subscriptionData.hasPaid && (
