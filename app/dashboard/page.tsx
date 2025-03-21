@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check, Copy, AlertTriangle, Home, LogOut, Loader2, Menu, X } from "lucide-react"
 import { toast } from "sonner"
 import { Toaster } from "@/components/ui/sonner"
 import { useAuth } from "@/lib/auth-context"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { PricingPlans } from "@/components/pricing-plans"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
+import { CheckoutHandler } from "./CheckoutHandler"
 
 interface SubscriptionData {
   hasPaid: boolean;
@@ -32,11 +33,9 @@ export default function Dashboard() {
   })
   const { user, signOut, isConfigured } = useAuth()
   const router = useRouter()
-  const searchParams = useSearchParams()
 
-  // Simple auth loading effect - wait for 1 second to let Firebase initialize
+  // Simple auth loading effect - wait for 200ms to let Firebase initialize
   useEffect(() => {
-    // Ensure we only redirect after this delay
     const timer = setTimeout(() => {
       setAuthLoading(false)
     }, 200)
@@ -81,31 +80,6 @@ export default function Dashboard() {
       fetchSubscriptionData();
     }
   }, [user]);
-
-  // Check for Stripe redirect status
-  useEffect(() => {
-    const success = searchParams.get('success')
-    const canceled = searchParams.get('canceled')
-
-    if (success) {
-      toast("Payment Successful", {
-        description: "Thank you for your purchase! Your secret key is now available.",
-      })
-      // Reload subscription data after successful payment
-      if (user) {
-        fetch(`/api/user/subscription?userId=${user.uid}`)
-          .then(res => res.json())
-          .then(data => setSubscriptionData(data))
-          .catch(err => console.error('Error refreshing subscription data:', err));
-      }
-    }
-
-    if (canceled) {
-      toast("Payment Canceled", {
-        description: "Your payment was canceled.",
-      })
-    }
-  }, [searchParams, user])
 
   // Redirect if not logged in - BUT ONLY AFTER AUTH HAS INITIALIZED
   useEffect(() => {
@@ -191,6 +165,54 @@ export default function Dashboard() {
     <main className="flex min-h-screen flex-col items-center p-4 bg-gradient-to-br from-gray-50 to-gray-100">
       <Toaster />
       
+      {/* Wrap the checkout handler in Suspense boundary */}
+      <Suspense fallback={null}>
+        <CheckoutHandler 
+          user={user}
+          onSubscriptionUpdate={setSubscriptionData}
+        />
+      </Suspense>
+      
+      {/* Rest of the UI */}
+      <DashboardUI 
+        user={user}
+        subscriptionData={subscriptionData}
+        copied={copied}
+        emailCopied={emailCopied}
+        mobileMenuOpen={mobileMenuOpen}
+        copyToClipboard={copyToClipboard}
+        copyEmailToClipboard={copyEmailToClipboard}
+        handleSignOut={handleSignOut}
+        toggleMobileMenu={toggleMobileMenu}
+      />
+    </main>
+  )
+}
+
+// Separate the UI part to reduce complexity in the main component
+function DashboardUI({
+  user,
+  subscriptionData,
+  copied,
+  emailCopied,
+  mobileMenuOpen,
+  copyToClipboard,
+  copyEmailToClipboard,
+  handleSignOut,
+  toggleMobileMenu
+}: {
+  user: any;
+  subscriptionData: SubscriptionData;
+  copied: boolean;
+  emailCopied: boolean;
+  mobileMenuOpen: boolean;
+  copyToClipboard: () => void;
+  copyEmailToClipboard: () => void;
+  handleSignOut: () => void;
+  toggleMobileMenu: () => void;
+}) {
+  return (
+    <>
       {/* Navigation bar */}
       <div className="w-full bg-white shadow-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center relative">
@@ -237,23 +259,20 @@ export default function Dashboard() {
           {/* Mobile menu dropdown */}
           {mobileMenuOpen && (
             <div className="absolute top-full right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-lg z-50 md:hidden">
-              <Link href="/website" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/website" onClick={() => toggleMobileMenu()}>
                 <div className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
                   <Home className="h-4 w-4" />
                   <span>Website</span>
                 </div>
               </Link>
-              <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/pricing" onClick={() => toggleMobileMenu()}>
                 <div className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
                   <span>Pricing</span>
                 </div>
               </Link>
               <button
                 className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
-                onClick={() => {
-                  handleSignOut();
-                  setMobileMenuOpen(false);
-                }}
+                onClick={handleSignOut}
               >
                 <LogOut className="h-4 w-4" />
                 <span>Sign Out</span>
@@ -324,7 +343,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Pricing Section - Now always shown for all users */}
+        {/* Pricing Section */}
         <div className="pt-10 pb-4">
           <h2 className="text-2xl font-bold text-center mb-2">
             {subscriptionData.hasPaid ? "Manage Your Subscription" : "Choose Your Plan"}
@@ -339,7 +358,11 @@ export default function Dashboard() {
           <PricingPlans subscriptionData={subscriptionData} />
         </div>
       </div>
-    </main>
-  )
+    </>
+  );
 }
+
+// Tell Next.js this is a dynamic page that shouldn't be statically optimized
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
