@@ -11,6 +11,7 @@ import { useState, useRef, useEffect } from "react"
 import { transcribeAudio } from "../actions"
 import Link from "next/link"
 import { FooterYear } from "../components/FooterWithClientComponents"
+import { DirectDownload } from "../components/DirectDownload"
 
 const pacifico = Pacifico({
   subsets: ["latin"],
@@ -440,7 +441,7 @@ export default function HeroGeometric({
                   ) : (
                 <Mic className="h-5 w-5" />
                   )}
-                  {loading ? "Processing..." : isRecording ? "Stop Recording" : "Talk with Friday"}
+                  {loading ? "Processing..." : isRecording ? "Stop Recording" : "Try Here Live"}
               </span>
               <span className="absolute inset-0 overflow-hidden rounded-full">
                   <span className="absolute inset-0 rounded-full bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 opacity-0 transition-opacity duration-500 group-hover:opacity-100"></span>
@@ -735,6 +736,29 @@ export default function HeroGeometric({
               </div>
             </motion.div>
           </div>
+          
+          {/* Download CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="mt-16 max-w-2xl mx-auto text-center"
+          >
+            <h3 className="text-2xl md:text-3xl font-bold text-white mb-6">
+              Ready to try <span className={pacifico.className}>Friday</span>?
+            </h3>
+            <p className="text-white/60 mb-8">
+              Download now to experience the fastest AI voice-to-text transcription app for Mac.
+            </p>
+            <DirectDownload 
+              label="Download for Mac (10.1 MB)"
+              className="text-base rounded-xl px-8 py-4 mx-auto"
+            />
+            <p className="text-white/40 text-sm mt-4">
+              macOS 11.0+ required. Direct download from our secure servers.
+            </p>
+          </motion.div>
         </div>
       </div>
 
