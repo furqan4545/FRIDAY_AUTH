@@ -22,6 +22,10 @@ export async function POST(req: NextRequest) {
   const headersList = await headers();
   const sig = headersList.get('stripe-signature');
 
+  console.log('Received webhook request');
+  console.log('Signature:', sig);
+  console.log('Endpoint secret:', endpointSecret);
+
   let event: Stripe.Event;
 
   try {
@@ -34,6 +38,7 @@ export async function POST(req: NextRequest) {
     }
     
     event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
+    console.log('Webhook event constructed successfully:', event.type);
   } catch (err: any) {
     console.error(`Webhook Error: ${err.message}`);
     return NextResponse.json(
@@ -47,21 +52,25 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+        console.log('Processing checkout.session.completed:', session.id);
         await handleCheckoutSessionCompleted(session);
         break;
       }
       case 'customer.subscription.created': {
         const subscription = event.data.object as Stripe.Subscription;
+        console.log('Processing customer.subscription.created:', subscription.id);
         await handleSubscriptionCreated(subscription);
         break;
       }
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
+        console.log('Processing invoice.payment_succeeded:', invoice.id);
         await handleInvoicePaymentSucceeded(invoice);
         break;
       }
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
+        console.log('Processing customer.subscription.deleted:', subscription.id);
         await handleSubscriptionDeleted(subscription);
         break;
       }
@@ -89,6 +98,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     let customerEmail = session.customer_email;
     const planType = session.metadata?.planType;
     
+    console.log('Session details:', {
+      userId,
+      customerEmail,
+      planType,
+      customer: session.customer,
+      subscription: session.subscription
+    });
+
     if (!userId) {
       console.error('No userId found in session reference');
       return;
@@ -100,6 +117,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         const customer = await stripe.customers.retrieve(session.customer as string);
         if (customer && !customer.deleted && customer.email) {
           customerEmail = customer.email;
+          console.log('Retrieved customer email:', customerEmail);
         }
       } catch (error) {
         console.error('Error fetching customer details:', error);
@@ -108,19 +126,23 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
     // If still no email, try to get it from Firebase Auth
     if (!customerEmail) {
-      // For serverless environments, you might need to use Firebase Admin SDK to get user email
-      // This is just a placeholder for how you might do it
-      const userDoc = await firestore.collection('users').doc(userId).get();
-      if (userDoc.exists && userDoc.data()?.email) {
-        customerEmail = userDoc.data()?.email;
+      try {
+        const userDoc = await firestore.collection('users').doc(userId).get();
+        if (userDoc.exists && userDoc.data()?.email) {
+          customerEmail = userDoc.data()?.email;
+          console.log('Retrieved email from Firebase:', customerEmail);
+        }
+      } catch (error) {
+        console.error('Error fetching user from Firebase:', error);
       }
     }
 
     // Generate a unique secret key for this user
     const secretKey = generateSecretKey();
+    console.log('Generated secret key for user:', userId);
     
     // Update user subscription data in Firestore
-    await firestore.collection('users').doc(userId).set({
+    const updateData = {
       email: customerEmail || null,
       planType: planType,
       paidAt: new Date(),
@@ -129,9 +151,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       status: 'active',
       secretKey: secretKey,
       lastPaymentDate: new Date(),
-    }, { merge: true });
+    };
     
-    console.log(`Updated user ${userId} with payment information and secret key`);
+    console.log('Updating Firestore with data:', updateData);
+    await firestore.collection('users').doc(userId).set(updateData, { merge: true });
+    
+    console.log(`Successfully updated user ${userId} with payment information and secret key`);
   } catch (error) {
     console.error('Error handling checkout session:', error);
   }
