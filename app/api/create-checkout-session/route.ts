@@ -4,7 +4,7 @@ import { firestore } from '@/lib/firebase-admin';
 
 // Initialize Stripe with your secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-10-16' as any, // Force accept the API version
+  apiVersion: '2022-11-15' as any, // Match webhook API version
 });
 
 export async function POST(req: NextRequest) {
