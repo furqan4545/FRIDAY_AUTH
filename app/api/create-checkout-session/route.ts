@@ -11,7 +11,26 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 export async function POST(req: NextRequest) {
   try {
     const { planType, userId, email, isUpgrade } = await req.json();
-    console.log('Request received for plan type:', planType);
+    console.log('Request details:', { planType, userId, email, isUpgrade });
+
+    // First, check if user already has an active subscription
+    const userDoc = await firestore.collection('users').doc(userId).get();
+    const userData = userDoc.exists ? userDoc.data() : null;
+    const hasActiveSubscription = userData?.status === 'active' && userData?.subscriptionId;
+    
+    console.log('User subscription status:', {
+      hasActiveSubscription,
+      currentPlanType: userData?.planType,
+      targetPlanType: planType
+    });
+
+    // If user has active subscription and trying to get the same plan type, prevent it
+    if (hasActiveSubscription && userData?.planType === planType) {
+      return NextResponse.json(
+        { error: 'You already have an active subscription to this plan' },
+        { status: 400 }
+      );
+    }
 
     // Set up pricing based on plan type
     const priceId = planType === 'monthly' 
@@ -37,33 +56,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // If this is an upgrade from monthly to lifetime, we need to cancel the current subscription
-    let customerId: string | undefined;
+    let customerId = userData?.customerId;
     
-    if (isUpgrade) {
-      // Get the user's current subscription data
-      const userDoc = await firestore.collection('users').doc(userId).get();
-      
-      if (userDoc.exists) {
-        const userData = userDoc.data();
-        customerId = userData?.customerId;
-        const subscriptionId = userData?.subscriptionId;
-        
-        // Cancel the current subscription if it exists
-        if (subscriptionId) {
-          try {
-            await stripe.subscriptions.update(subscriptionId, {
-              cancel_at_period_end: true,
-            });
-            console.log(`Updated subscription ${subscriptionId} to cancel at period end`);
-          } catch (error) {
-            console.error(`Error canceling subscription ${subscriptionId}:`, error);
-          }
+    // Handle upgrade from monthly to lifetime
+    if (hasActiveSubscription && planType === 'lifetime') {
+      console.log('Processing upgrade to lifetime plan...');
+      try {
+        // Cancel the current subscription immediately
+        if (userData?.subscriptionId) {
+          await stripe.subscriptions.cancel(userData.subscriptionId);
+          console.log('Cancelled existing subscription:', userData.subscriptionId);
+          
+          // Update user status in Firestore
+          await firestore.collection('users').doc(userId).update({
+            subscriptionId: null,
+            subscriptionStatus: 'canceled',
+            // Don't update status to inactive since they're upgrading
+          });
         }
+      } catch (error) {
+        console.error('Error canceling existing subscription:', error);
+        // Continue with the upgrade even if cancellation fails
       }
     }
 
-    // Store user's email in Firestore regardless of payment
+    // Store user's email in Firestore
     if (email) {
       try {
         await firestore.collection('users').doc(userId).set({
@@ -87,31 +104,40 @@ export async function POST(req: NextRequest) {
       mode: planType === 'monthly' ? 'subscription' : 'payment',
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?canceled=true`,
-      client_reference_id: userId, // Store the Firebase user ID as reference
+      client_reference_id: userId,
       metadata: {
         userId,
         planType,
-        isUpgrade: isUpgrade ? 'true' : 'false',
+        isUpgrade: hasActiveSubscription ? 'true' : 'false',
+        previousPlan: hasActiveSubscription ? userData?.planType : null,
         userEmail: email || '',
       },
+      allow_promotion_codes: true,
     };
     
-    // If we have a customer ID from an upgrade, use it
+    // Use existing customer ID if available
     if (customerId) {
       sessionOptions.customer = customerId;
+      console.log('Using existing customer ID:', customerId);
     } else if (email) {
-      // Otherwise use email if available
       sessionOptions.customer_email = email;
+      console.log('Using customer email:', email);
     }
 
     // Create the session
+    console.log('Creating checkout session with options:', {
+      mode: sessionOptions.mode,
+      planType,
+      isUpgrade: hasActiveSubscription
+    });
     const session = await stripe.checkout.sessions.create(sessionOptions);
+    console.log('Checkout session created:', session.id);
 
     return NextResponse.json({ sessionId: session.id });
   } catch (error) {
     console.error('Error creating checkout session:', error);
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: 'Failed to create checkout session', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

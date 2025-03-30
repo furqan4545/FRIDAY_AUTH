@@ -5,7 +5,7 @@ import { firestore } from '@/lib/firebase-admin';
 import crypto from 'crypto';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-10-16' as any,
+  apiVersion: '2022-11-15' as any,
 });
 
 // This is your Stripe webhook secret for testing your endpoint locally
@@ -18,13 +18,17 @@ function generateSecretKey(): string {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('Webhook received - starting processing...');
+  
   const body = await req.text();
   const headersList = await headers();
   const sig = headersList.get('stripe-signature');
 
-  console.log('Received webhook request');
-  console.log('Signature:', sig);
-  console.log('Endpoint secret:', endpointSecret);
+  console.log('Webhook details:', {
+    hasSignature: !!sig,
+    hasEndpointSecret: !!endpointSecret,
+    headers: Object.fromEntries(headersList.entries())
+  });
 
   let event: Stripe.Event;
 
@@ -38,9 +42,16 @@ export async function POST(req: NextRequest) {
     }
     
     event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
-    console.log('Webhook event constructed successfully:', event.type);
+    console.log('Successfully constructed webhook event:', {
+      type: event.type,
+      id: event.id
+    });
   } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
+    console.error('Webhook signature verification failed:', {
+      error: err.message,
+      signature: sig?.substring(0, 20) + '...',
+      endpointSecret: endpointSecret?.substring(0, 10) + '...'
+    });
     return NextResponse.json(
       { error: `Webhook Error: ${err.message}` }, 
       { status: 400 }
@@ -52,25 +63,42 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('Processing checkout.session.completed:', session.id);
+        console.log('Processing checkout.session.completed:', {
+          sessionId: session.id,
+          customerId: session.customer,
+          clientReferenceId: session.client_reference_id,
+          mode: session.mode,
+          paymentStatus: session.payment_status
+        });
         await handleCheckoutSessionCompleted(session);
         break;
       }
       case 'customer.subscription.created': {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log('Processing customer.subscription.created:', subscription.id);
+        console.log('Processing customer.subscription.created:', {
+          subscriptionId: subscription.id,
+          customerId: subscription.customer,
+          status: subscription.status
+        });
         await handleSubscriptionCreated(subscription);
         break;
       }
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
-        console.log('Processing invoice.payment_succeeded:', invoice.id);
+        console.log('Processing invoice.payment_succeeded:', {
+          invoiceId: invoice.id,
+          customerId: invoice.customer,
+          subscriptionId: invoice.subscription
+        });
         await handleInvoicePaymentSucceeded(invoice);
         break;
       }
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log('Processing customer.subscription.deleted:', subscription.id);
+        console.log('Processing customer.subscription.deleted:', {
+          subscriptionId: subscription.id,
+          customerId: subscription.customer
+        });
         await handleSubscriptionDeleted(subscription);
         break;
       }
@@ -93,19 +121,15 @@ export async function POST(req: NextRequest) {
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   try {
-    console.log('Checkout session completed:', session.id);
+    console.log('Starting handleCheckoutSessionCompleted:', {
+      sessionId: session.id,
+      metadata: session.metadata
+    });
+
     const userId = session.client_reference_id;
     let customerEmail = session.customer_email;
     const planType = session.metadata?.planType;
     
-    console.log('Session details:', {
-      userId,
-      customerEmail,
-      planType,
-      customer: session.customer,
-      subscription: session.subscription
-    });
-
     if (!userId) {
       console.error('No userId found in session reference');
       return;
@@ -139,26 +163,32 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
     // Generate a unique secret key for this user
     const secretKey = generateSecretKey();
-    console.log('Generated secret key for user:', userId);
+    console.log('Generated new secret key for user:', userId);
     
     // Update user subscription data in Firestore
     const updateData = {
       email: customerEmail || null,
       planType: planType,
       paidAt: new Date(),
-      subscriptionId: session.subscription, // if subscription
-      customerId: session.customer, // stripe customer id
+      subscriptionId: session.subscription,
+      customerId: session.customer,
       status: 'active',
       secretKey: secretKey,
       lastPaymentDate: new Date(),
     };
     
-    console.log('Updating Firestore with data:', updateData);
+    console.log('Updating Firestore with data:', {
+      userId,
+      planType,
+      hasSubscriptionId: !!session.subscription,
+      hasCustomerId: !!session.customer
+    });
+
     await firestore.collection('users').doc(userId).set(updateData, { merge: true });
-    
-    console.log(`Successfully updated user ${userId} with payment information and secret key`);
+    console.log('Successfully updated user data in Firestore');
   } catch (error) {
-    console.error('Error handling checkout session:', error);
+    console.error('Error in handleCheckoutSessionCompleted:', error);
+    throw error;
   }
 }
 
