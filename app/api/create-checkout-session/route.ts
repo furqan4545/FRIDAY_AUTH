@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { firestore } from '@/lib/firebase-admin';
 
 // Initialize Stripe with your secret key
+console.log('Stripe Mode:', process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'Live' : 'Test');
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2022-11-15' as any, // Match webhook API version
 });
@@ -10,15 +11,28 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 export async function POST(req: NextRequest) {
   try {
     const { planType, userId, email, isUpgrade } = await req.json();
+    console.log('Request received for plan type:', planType);
 
     // Set up pricing based on plan type
     const priceId = planType === 'monthly' 
       ? process.env.STRIPE_MONTHLY_PRICE_ID 
       : process.env.STRIPE_LIFETIME_PRICE_ID;
 
-    if (!priceId) {
+    console.log('Selected price ID:', priceId);
+
+    // Verify the price exists in Stripe
+    try {
+      const price = await stripe.prices.retrieve(priceId as string);
+      console.log('Price details:', {
+        id: price.id,
+        active: price.active,
+        type: price.type,
+        mode: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'Live' : 'Test'
+      });
+    } catch (priceError) {
+      console.error('Error retrieving price:', priceError);
       return NextResponse.json(
-        { error: 'Price ID not configured for this plan type' },
+        { error: 'Invalid price ID or price not found in Stripe' },
         { status: 400 }
       );
     }
